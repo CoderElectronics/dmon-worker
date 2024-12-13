@@ -1,0 +1,19 @@
+# Author: Ari Stehney
+# Description: Sample configuration file for the server
+# Version: 1.0.0
+# License: MIT
+
+server:
+  host: localhost
+  port: 3000
+  iv: test_iv_1234
+
+worker:
+  id: server1
+  pk: test_pk_5678
+  schedule: "0 */1 * * * * *" # every minute
+  modules:
+    - sysinfo: python3 modules/sysinfo.py
+    - diskinfo: python3 modules/diskinfo.py
+    - netinfo: python3 modules/netinfo.py
+    - procinfo: python3 modules/procinfo.py

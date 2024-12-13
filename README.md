@@ -1,6 +1,6 @@
 # dmon-worker
 
-A project template for Rust, helping to structure your projects according to best practices.
+Worker for to log system stats to dmon-server. More info to come.
 
 ## Building
 

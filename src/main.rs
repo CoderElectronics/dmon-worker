@@ -109,10 +109,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let yaml_config = &yaml_raw[0];
 
-    // Validate configuration
     validator::validate_config(&yaml_config)?;
-
-    scheduled_push(&yaml_config)?;
 
     // Create a flag for graceful shutdown
     let running = Arc::new(AtomicBool::new(true));

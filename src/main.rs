@@ -28,6 +28,10 @@ struct Args {
     /// YAML configuration file path.
     #[arg(short, long, default_value = "worker_config.yaml", value_hint = clap::ValueHint::FilePath)]
     config: String,
+
+    /// Run once immediately and exit. Default is to run on schedule.
+    #[arg(short, long)]
+    run_now: bool,
 }
 
 fn scheduled_push(yaml_config: &yaml_rust::Yaml) -> Result<(), Box<dyn std::error::Error>> {
@@ -119,6 +123,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Stopping gracefully...");
         r.store(false, Ordering::SeqCst);
     })?;
+
+    if args.run_now {
+        scheduled_push(&yaml_config)?;
+        return Ok(());
+    }
 
     // Create scheduled task
     let yaml_config_clone = yaml_config.clone();

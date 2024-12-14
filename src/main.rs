@@ -8,7 +8,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 extern crate yaml_rust;
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
 use ureq;
 use yaml_rust::YamlLoader;
 
@@ -34,9 +34,7 @@ fn scheduled_push(yaml_config: &yaml_rust::Yaml) -> Result<(), Box<dyn std::erro
     let key_string = yaml_config["worker"]["pk"]
         .as_str()
         .ok_or("missing encryption key string in config!")?;
-    let iv_string = yaml_config["server"]["iv"]
-        .as_str()
-        .ok_or("missing encryption IV string in config!")?;
+    let iv_u8 = hashenc::generate_rand_iv().unwrap();
 
     let url = url::Url::new(
         &yaml_config["server"]["host"].as_str().unwrap_or_default(),
@@ -78,14 +76,13 @@ fn scheduled_push(yaml_config: &yaml_rust::Yaml) -> Result<(), Box<dyn std::erro
         }
     }
 
-    let encrypted_payload = hashenc::encrypt_payload(
-        &Value::Object(object_map).to_string(),
-        key_string,
-        iv_string,
-    )?;
+    let post_payload = json!({
+        "payload": hashenc::encrypt_payload(&Value::Object(object_map).to_string(), key_string, iv_u8)?,
+        "iv": hashenc::generate_base64_iv(iv_u8)?,
+    });
 
     let resp: String = ureq::post(&url.format(false))
-        .send_string(&encrypted_payload)?
+        .send_string(&post_payload.to_string())?
         .into_string()?;
 
     println!(
@@ -114,6 +111,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Validate configuration
     validator::validate_config(&yaml_config)?;
+
+    scheduled_push(&yaml_config)?;
 
     // Create a flag for graceful shutdown
     let running = Arc::new(AtomicBool::new(true));

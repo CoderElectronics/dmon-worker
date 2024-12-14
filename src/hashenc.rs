@@ -1,96 +1,48 @@
 use aes::cipher::BlockDecryptMut;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use cbc::cipher::block_padding::Pkcs7;
 use cbc::cipher::{BlockEncryptMut, KeyIvInit};
+use rand::RngCore;
 use sha2::{Digest, Sha512};
-use std::ffi::{CStr, CString};
-use std::os::raw::c_char;
 
-#[no_mangle]
-pub extern "C" fn decrypt_payload_ffi(
-    encrypted_hex: *const c_char,
-    key_string: *const c_char,
-    iv_string: *const c_char,
-) -> *mut c_char {
-    // Convert C strings to Rust strings
-    let c_enc = unsafe { CStr::from_ptr(encrypted_hex) };
-    let c_key = unsafe { CStr::from_ptr(key_string) };
-    let c_iv = unsafe { CStr::from_ptr(iv_string) };
+pub fn generate_rand_iv() -> Result<[u8; 16], Box<dyn std::error::Error>> {
+    let mut random_bytes = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut random_bytes);
 
-    let rust_enc = c_enc.to_str().unwrap();
-    let rust_key = c_key.to_str().unwrap();
-    let rust_iv = c_iv.to_str().unwrap();
+    // Create hasher and hash the random bytes
+    let mut iv_hasher = Sha512::new();
+    iv_hasher.update(&random_bytes);
+    let iv_hash = iv_hasher.finalize();
 
-    // Process the strings (concatenate and uppercase in this example)
-    let processed = match decrypt_payload(rust_enc, rust_key, rust_iv) {
-        Ok(s) => s,
-        Err(_e) => "".to_string(),
-    };
+    // Take first 16 bytes for IV
+    let iv: [u8; 16] = iv_hash[0..16]
+        .try_into()
+        .map_err(|_| "Failed to convert IV hash to array")?;
 
-    // Convert back to C string and return
-    let c_string = CString::new(processed).unwrap();
-    c_string.into_raw() // Transfer ownership to caller
+    Ok(iv)
 }
 
-#[no_mangle]
-pub extern "C" fn encrypt_payload_ffi(
-    data: *const c_char,
-    key_string: *const c_char,
-    iv_string: *const c_char,
-) -> *mut c_char {
-    // Convert C strings to Rust strings
-    let c_data = unsafe { CStr::from_ptr(data) };
-    let c_key = unsafe { CStr::from_ptr(key_string) };
-    let c_iv = unsafe { CStr::from_ptr(iv_string) };
-
-    let rust_data = c_data.to_str().unwrap();
-    let rust_key = c_key.to_str().unwrap();
-    let rust_iv = c_iv.to_str().unwrap();
-
-    // Process the strings (concatenate and uppercase in this example)
-    let processed = match encrypt_payload(rust_data, rust_key, rust_iv) {
-        Ok(s) => s,
-        Err(_e) => "".to_string(),
-    };
-
-    // Convert back to C string and return
-    let c_string = CString::new(processed).unwrap();
-    c_string.into_raw() // Transfer ownership to caller
-}
-
-#[no_mangle]
-pub extern "C" fn free_string(ptr: *mut c_char) {
-    unsafe {
-        if !ptr.is_null() {
-            let _ = CString::from_raw(ptr);
-        }
-    }
+pub fn generate_base64_iv(iv: [u8; 16]) -> Result<String, Box<dyn std::error::Error>> {
+    Ok(BASE64.encode(iv))
 }
 
 pub fn encrypt_payload(
     data: &str,
     key_string: &str,
-    iv_string: &str,
+    iv: [u8; 16],
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Create SHA-512 hasher
     let mut key_hasher = Sha512::new();
-    let mut iv_hasher = Sha512::new();
 
     // Create hashes from input strings
     key_hasher.update(key_string.as_bytes());
-    iv_hasher.update(iv_string.as_bytes());
 
     let key_hash = key_hasher.finalize();
-    let iv_hash = iv_hasher.finalize();
 
     // Take first 32 bytes of key_hash for AES-256 key
     let key: [u8; 32] = key_hash[0..32]
         .try_into()
         .map_err(|_| "Failed to convert key hash to array")?;
-
-    // Take first 16 bytes of iv_hash for IV
-    let iv: [u8; 16] = iv_hash[0..16]
-        .try_into()
-        .map_err(|_| "Failed to convert IV hash to array")?;
 
     // Convert the input string to bytes
     let plaintext = data.as_bytes();
@@ -121,28 +73,20 @@ pub fn encrypt_payload(
 pub fn decrypt_payload(
     encrypted_hex: &str,
     key_string: &str,
-    iv_string: &str,
+    iv: [u8; 16],
 ) -> Result<String, Box<dyn std::error::Error>> {
     // Create SHA-512 hasher
     let mut key_hasher = Sha512::new();
-    let mut iv_hasher = Sha512::new();
 
     // Create hashes from input strings
     key_hasher.update(key_string.as_bytes());
-    iv_hasher.update(iv_string.as_bytes());
 
     let key_hash = key_hasher.finalize();
-    let iv_hash = iv_hasher.finalize();
 
     // Take first 32 bytes of key_hash for AES-256 key
     let key: [u8; 32] = key_hash[0..32]
         .try_into()
         .map_err(|_| "Failed to convert key hash to array")?;
-
-    // Take first 16 bytes of iv_hash for IV
-    let iv: [u8; 16] = iv_hash[0..16]
-        .try_into()
-        .map_err(|_| "Failed to convert IV hash to array")?;
 
     // Decode hex string to bytes
     let ciphertext = hex::decode(encrypted_hex).map_err(|_| "Failed to decode hex string")?;

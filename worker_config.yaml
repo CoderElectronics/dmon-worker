@@ -1,12 +1,11 @@
 # Author: Ari Stehney
-# Description: Sample configuration file for the server
+# Description: Sample configuration file for the worker
 # Version: 1.0.0
 # License: MIT
 
 server:
   host: localhost
   port: 3000
-  iv: test_iv_1234
 
 worker:
   id: server1

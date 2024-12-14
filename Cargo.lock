@@ -337,6 +337,7 @@ name = "dmon-worker"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "base64",
  "cbc",
  "chrono",
  "clap",
@@ -344,6 +345,7 @@ dependencies = [
  "ctrlc",
  "futures",
  "hex",
+ "rand",
  "run_script",
  "serde_json",
  "sha2",

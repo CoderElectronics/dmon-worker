@@ -2,7 +2,6 @@ pub fn validate_config(yaml_config: &yaml_rust::Yaml) -> Result<(), Box<dyn std:
     let required_fields = vec![
         ("server.host", &["server", "host"], "string"),
         ("server.port", &["server", "port"], "integer"),
-        ("server.iv", &["server", "iv"], "string"),
         ("worker.id", &["worker", "id"], "string"),
         ("worker.pk", &["worker", "pk"], "string"),
         ("worker.schedule", &["worker", "schedule"], "string"),

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use aes::cipher::BlockDecryptMut;
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use cbc::cipher::block_padding::Pkcs7;
